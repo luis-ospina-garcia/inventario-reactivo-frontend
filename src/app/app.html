@@ -1,0 +1,94 @@
+<div class="shell">
+  <header class="top">
+    <div class="brand">
+      <div class="logo"><app-icon name="box" [size]="22" /></div>
+      <div>
+        <h1>Inventario reactivo</h1>
+        <p>Existencias y movimientos en tiempo real</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn icon" (click)="toggleTheme()" [attr.aria-label]="theme() === 'dark' ? 'Tema claro' : 'Tema oscuro'">
+        <app-icon [name]="theme() === 'dark' ? 'sun' : 'moon'" />
+      </button>
+      <button type="button" class="btn primary" (click)="showForm.set(true)">
+        <app-icon name="plus" [size]="16" /> Registrar producto
+      </button>
+    </div>
+  </header>
+
+  <section class="stats" aria-label="Resumen">
+    <article class="tile">
+      <span class="ico info"><app-icon name="box" /></span>
+      <div><small>Productos</small><strong>{{ products().length }}</strong></div>
+    </article>
+    <article class="tile">
+      <span class="ico ok"><app-icon name="layers" /></span>
+      <div><small>Unidades en stock</small><strong>{{ totalUnits() }}</strong></div>
+    </article>
+    <article class="tile">
+      <span class="ico low"><app-icon name="alert" /></span>
+      <div><small>Con stock bajo (≤ {{ lowStock }})</small><strong>{{ lowStockCount() }}</strong></div>
+    </article>
+  </section>
+
+  <main class="layout">
+    <section class="catalog">
+      <div class="search">
+        <app-icon name="search" [size]="17" />
+        <input type="search" placeholder="Buscar por SKU o nombre" [value]="typed()" (input)="typed.set($any($event.target).value)" aria-label="Buscar productos" />
+      </div>
+
+      @if (loadState() === 'loading') {
+        <div class="grid">
+          @for (i of [1, 2, 3, 4]; track i) { <div class="card skeleton"></div> }
+        </div>
+      } @else if (loadState() === 'failed') {
+        <div class="empty">
+          <div class="empty-icon err"><app-icon name="alert" [size]="22" /></div>
+          <h3>No se pudo cargar el inventario</h3>
+          <p>No logramos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.</p>
+          <button type="button" class="btn" (click)="store.reload()"><app-icon name="refresh" [size]="16" /> Reintentar</button>
+        </div>
+      } @else if (products().length === 0) {
+        <div class="empty">
+          <div class="empty-icon"><app-icon name="box" [size]="22" /></div>
+          <h3>Aún no hay productos</h3>
+          <p>Registra el primero y empieza a anotar entradas y salidas.</p>
+          <button type="button" class="btn primary" (click)="showForm.set(true)"><app-icon name="plus" [size]="16" /> Registrar producto</button>
+        </div>
+      } @else if (visible().length === 0) {
+        <div class="empty">
+          <div class="empty-icon"><app-icon name="search" [size]="22" /></div>
+          <h3>Sin resultados</h3>
+          <p>Ningún producto coincide con “{{ query() }}”. Prueba con otro SKU o nombre.</p>
+          <button type="button" class="btn" (click)="typed.set('')">Limpiar búsqueda</button>
+        </div>
+      } @else {
+        <div class="grid">
+          @for (p of visible(); track p.id) {
+            <button type="button" class="card" [class.selected]="selectedId() === p.id" [class.flash]="flashId() === p.id"
+                    [class]="level(p.stock)" (click)="store.select(p.id)">
+              <span class="sku">{{ p.sku }}</span>
+              <span class="name">{{ p.name }}</span>
+              <span class="foot">
+                <span class="qty"><strong>{{ p.stock }}</strong> uds.</span>
+                @if (level(p.stock) === 'out') { <span class="badge out">Agotado</span> } @else if (level(p.stock) === 'low') { <span class="badge low">Stock bajo</span> }
+              </span>
+              <span class="meter"><span class="fill" [style.width.%]="percent(p.stock)"></span></span>
+            </button>
+          }
+        </div>
+      }
+    </section>
+
+    <aside class="detail">
+      <app-product-detail />
+    </aside>
+  </main>
+</div>
+
+@if (showForm()) {
+  <app-product-form (closed)="showForm.set(false)" />
+}
+<app-toasts />

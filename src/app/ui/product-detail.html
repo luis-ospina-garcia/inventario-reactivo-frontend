@@ -1,0 +1,94 @@
+@if (product(); as p) {
+  <section class="panel">
+    <header class="head">
+      <div class="titles">
+        <span class="sku">{{ p.sku }}</span>
+        <h2>{{ p.name }}</h2>
+      </div>
+      <span class="live" [class]="live()" role="status">
+        <i></i>
+        {{ live() === 'on' ? 'En vivo' : live() === 'connecting' ? 'Reconectando…' : 'Sin conexión' }}
+      </span>
+    </header>
+
+    <div class="stock" [class]="level()" [class.flash]="flashId() === p.id">
+      <div class="num">
+        <strong>{{ p.stock }}</strong>
+        <span>unidades en stock</span>
+      </div>
+      <div class="meter"><div class="fill" [style.width.%]="percent()"></div></div>
+      @if (level() === 'out') {
+        <p class="note"><app-icon name="alert" [size]="15" /> Sin existencias: registra una entrada para reponer.</p>
+      } @else if (level() === 'low') {
+        <p class="note"><app-icon name="alert" [size]="15" /> Stock bajo: conviene reponer pronto.</p>
+      }
+    </div>
+
+    <form class="move" (ngSubmit)="submit()">
+      <h3>Registrar movimiento</h3>
+
+      <div class="seg" role="radiogroup" aria-label="Tipo de movimiento">
+        <button type="button" role="radio" [attr.aria-checked]="type() === 'IN'" [class.active]="type() === 'IN'"
+                class="in" (click)="type.set('IN')">
+          <app-icon name="down" [size]="16" /> Entrada
+        </button>
+        <button type="button" role="radio" [attr.aria-checked]="type() === 'OUT'" [class.active]="type() === 'OUT'"
+                class="out" (click)="type.set('OUT')">
+          <app-icon name="up" [size]="16" /> Salida
+        </button>
+      </div>
+
+      <div class="row">
+        <div class="stepper">
+          <button type="button" (click)="step(-1)" aria-label="Menos"><app-icon name="minus" [size]="16" /></button>
+          <input name="quantity" type="number" min="1" [(ngModel)]="quantity" aria-label="Cantidad" />
+          <button type="button" (click)="step(1)" aria-label="Más"><app-icon name="plus" [size]="16" /></button>
+        </div>
+        <div class="proj" [class.neg]="projected() < 0">
+          <span>Quedaría en</span>
+          <strong>{{ projected() }}</strong>
+        </div>
+      </div>
+
+      <input name="reason" class="reason" [(ngModel)]="reason" maxlength="200" placeholder="Motivo (opcional): venta, compra, ajuste…" autocomplete="off" />
+
+      <button type="submit" class="btn primary wide" [class.danger]="type() === 'OUT'" [disabled]="!canSubmit()">
+        {{ sending() ? 'Registrando…' : type() === 'IN' ? 'Registrar entrada' : 'Registrar salida' }}
+      </button>
+      @if (projected() < 0) {
+        <p class="hint">Es más de lo que hay en stock: el movimiento no se podrá registrar.</p>
+      }
+    </form>
+
+    <div class="history">
+      <h3><app-icon name="history" [size]="16" /> Historial</h3>
+      @if (movementsLoading() && movements().length === 0) {
+        <div class="skeleton"></div><div class="skeleton"></div>
+      } @else if (movements().length === 0) {
+        <p class="none">Aún no hay movimientos. Registra una entrada o salida y aparecerá aquí.</p>
+      } @else {
+        <ol>
+          @for (m of movements(); track m.id) {
+            <li [class]="m.type === 'IN' ? 'in' : 'out'">
+              <span class="ico"><app-icon [name]="m.type === 'IN' ? 'down' : 'up'" [size]="15" /></span>
+              <div class="what">
+                <b>{{ m.type === 'IN' ? 'Entrada' : 'Salida' }}</b>
+                <small>{{ m.reason || 'Sin motivo' }}</small>
+              </div>
+              <div class="amount">
+                <b>{{ m.type === 'IN' ? '+' : '−' }}{{ m.quantity }}</b>
+                <small [title]="when(m.createdAt)">{{ ago(m.createdAt) }}</small>
+              </div>
+            </li>
+          }
+        </ol>
+      }
+    </div>
+  </section>
+} @else {
+  <section class="panel placeholder">
+    <div class="art"><app-icon name="layers" [size]="22" /></div>
+    <h3>Selecciona un producto</h3>
+    <p>Verás su stock en vivo, podrás registrar entradas y salidas y revisar su historial.</p>
+  </section>
+}
